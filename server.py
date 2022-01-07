@@ -46,16 +46,7 @@ class Server():
     def responseHandler(self, conn, addr):
         while True:
             data = conn.recv(2048)
-            if data:
-                tlog = f"[{addr[0]}]: {data.decode('utf-8')}"
-                print(tlog)
-                for user in self.users:
-                    if user != conn:
-                        user.send(tlog.encode('utf-8'))
-                    elif user == conn:
-                        stlog = f"[You]: {data.decode('utf-8')}"
-                        user.send(stlog.encode('utf-8'))
-            else:
+            if not data:
                 tlog = f"[{addr[0]}]: disconnected!"
                 print(tlog)
                 self.users.remove(conn)
@@ -64,12 +55,14 @@ class Server():
                 conn.close()
                 return
 
-        tlog = f"[{addr[0]}]: disconnected!"
-        print(tlog)
-        self.users.remove(conn)
-        for user in self.users:
-            user.send(tlog.encode('utf-8'))
-        conn.close()
+            tlog = f"[{addr[0]}]: {data.decode('utf-8')}"
+            print(tlog)
+            for user in self.users:
+                if user != conn:
+                    user.send(tlog.encode('utf-8'))
+                elif user == conn:
+                    stlog = f"[You]: {data.decode('utf-8')}"
+                    user.send(stlog.encode('utf-8'))
 
 if __name__ == '__main__':
     serv_addr = '127.0.0.1'
