@@ -36,7 +36,6 @@ class Server():
             for user in self.users:
                 user.send(tlog.encode('utf-8'))
             self.users.append(conn)
-            #self.responseHandler(conn, addr)
             responseThread = threading.Thread(
                     target=self.responseHandler,
                     args=(conn,addr,)
