@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import cpm
 import ssl
 import socket
 import threading
@@ -54,14 +55,24 @@ class Server():
                 conn.close()
                 return
 
-            tlog = f"[{addr[0]}]: {data.decode('utf-8')}"
-            print(tlog)
-            for user in self.users:
-                if user != conn:
-                    user.send(tlog.encode('utf-8'))
-                elif user == conn:
-                    stlog = f"[You]: {data.decode('utf-8')}"
-                    user.send(stlog.encode('utf-8'))
+            try:
+                tlog = f"[{addr[0]}]: {data.decode('utf-8')}"
+                print(tlog)
+                for user in self.users:
+                    if user != conn:
+                        user.send(tlog.encode('utf-8'))
+                    elif user == conn:
+                        stlog = f"[You]: {data.decode('utf-8')}"
+                        user.send(stlog.encode('utf-8'))
+            except UnicodeDecodeError:
+                tlog = f"[{addr[0]}]: {cpm.b2a(data)}"
+                print(tlog)
+                for user in self.users:
+                    if user != conn:
+                        user.send(tlog.encode('utf-8'))
+                    elif user == conn:
+                        stlog = f"[You]: {cpm.b2a(data)}"
+                        user.send(stlog.encode('utf-8'))
 
 if __name__ == '__main__':
     serv_addr = '127.0.0.1'
