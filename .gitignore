@@ -1,5 +1,4 @@
 __pycache__/
-/ssl/server.key
-/ssl/server.pem
-/key.bin
-/keylog.txt
+*.key
+*.pem
+env/
