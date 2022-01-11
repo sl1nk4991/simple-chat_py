@@ -54,14 +54,19 @@ cd client
 Usage with symmetric encryption
 -------------------------------
 
-Start client with symmetric option:
+Start client with symmetric encryption option:
 ```console
 cd client
 ./client.py -s
 ```
 
+List of full options you can see with:
+```console
+cd client
+./client.py --help
+```
+
 Troubleshooting
 ---------------
-
 
 [Why does `strxor` raise `TypeError: argument 2 must be bytes, not bytearray`?](https://www.pycryptodome.org/en/latest/src/faq.html#why-does-strxor-raise-typeerror-argument-2-must-be-bytes-not-bytearray)
