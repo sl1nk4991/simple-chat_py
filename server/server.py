@@ -77,6 +77,6 @@ if __name__ == "__main__":
     server = Server(serv_addr, serv_port)
     try:
         server.start()
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, SystemExit):
         print()
         exit(0)

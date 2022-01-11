@@ -34,7 +34,7 @@ cd server/ssl
 ./gencert.sh
 ```
 
-Than copy server certificate to client:
+Then copy server certificate to client:
 ```console
 cp server/ssl/cert.pem client/ssl/
 ```
@@ -60,7 +60,7 @@ cd client
 ./client.py -s
 ```
 
-List of full options you can see with:
+You can see full options list with:
 ```console
 cd client
 ./client.py --help
