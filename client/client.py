@@ -2,6 +2,7 @@
 
 import ssl
 import sys
+import json
 import socket
 import argparse
 import threading
@@ -91,27 +92,37 @@ class Client:
                 self.socket.close()
                 print()
                 return
-            if not self.args.symmetric:
-                self.msglog += data.decode() + "\n"
-                continue
-            try:
-                user = data.decode().split(': ')[0]
-                message = data.decode().split(': ')[1]
-                decrypted = decrypt(b64decode(message.encode()), key).decode()
-                self.msglog += f"[ENC]{user}: {decrypted}\n"
-            except (IndexError, Error, ValueError, KeyError):
-                self.msglog += data.decode() + "\n"
-                continue
+            data = json.loads(data.decode())
+            address = data['address']
+            msgType = data['type']
+            msg = data['message']
+            if msgType == "plain-text" or msgType == "server":
+                self.msglog += f"[{address}]: {msg}\n"
+            elif data['type'] == "encrypted":
+                if not args.symmetric:
+                    self.msglog += f"[{address}]: encrypted\n"
+                else:
+                    try:
+                        decrypted = decrypt(b64decode(msg.encode()), 
+                                key).decode()
+                        self.msglog += f"[ENC][{address}]: {decrypted}\n"
+                    except (IndexError, Error, ValueError, KeyError):
+                        self.msglog += f"[{address}]: {msg}\n"
 
     def inputHandler(self, key=None):
         while True:
             userInput = input("Enter: ")
             prefix = ''
             if not self.args.symmetric:
-                self.socket.send("message\r\n".encode() + userInput.encode())
+                data = {"header": "message", "type": "plain-text", 
+                        "message": userInput}
+                self.socket.send(json.dumps(data).encode())
             else:
-                encrypted = b64encode(encrypt(userInput.encode(), key))
-                self.socket.send("message\r\n".encode() + encrypted)
+                encrypted = b64encode(encrypt(userInput.encode(),
+                    key)).decode()
+                data = {"header": "message", "type": "encrypted",
+                        "message": encrypted}
+                self.socket.send(json.dumps(data).encode())
                 prefix = "[ENC]"
             system("clear")
             self.msglog += f"{prefix}[Me]: {userInput}\n"

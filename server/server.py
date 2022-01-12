@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import ssl
+import json
 import socket
 import threading
 
@@ -25,12 +26,18 @@ class Server:
             self.socket.listen()
             print("Server is listening")
             while True:
-                conn, addr = self.socket.accept()
-                log = f"[{addr[0]}]: connected"
-                print(log)
+                try:
+                    conn, addr = self.socket.accept()
+                except ssl.SSLError:
+                    continue
+                log = {"address": addr[0], "type": "server", 
+                        "message": "connected!"}
+                print(f"Address: {log['address']}, Type: {log['type']}, "\
+                        f"Message: {log['message']}")
                 for user in self.users:
-                    user.send(log.encode())
-                conn.send(f"Welcome to the server!".encode())
+                    user.send(json.dumps(log).encode())
+                conn.send('{"address": "SERVER", "type": "server", '\
+                        '"message": "Welcome to the server!"}'.encode())
                 self.users.append(conn)
                 clientHandlerThread = threading.Thread(
                         target=self.clientHandler,
@@ -46,28 +53,36 @@ class Server:
             while True:
                 data = conn.recv(2048)
                 if not data:
-                    log = f"[{addr[0]}]: disconnected"
-                    print(log)
+                    log = {"address": addr[0], "type": "server", 
+                            "message": "disconnected!"}
+                    print(f"Address: {log['address']}, Type: {log['type']}, "\
+                            f"Message: {log['message']}")
                     self.users.remove(conn)
                     for user in self.users:
-                        user.send(log.encode())
+                        user.send(json.dumps(log).encode())
                     conn.close()
                     return
                 try:
-                    data = data.decode().split('\r\n')
-                    header = data[0]
-                    body = data[1]
-                except IndexError:
-                    log = "Wrong request!"
-                    print(f"[{addr[0]}]: {log}")
-                    conn.send(log.encode())
+                    data = json.loads(data.decode())
+                    header = data['header']
+                    message = data['message']
+                    message_type = data['type']
+                except (json.decoder.JSONDecodeError, KeyError):
+                    log = {"address": "", "type": "server", 
+                            "message": "Wrong request!"}
+                    print(f"Address: {log['address']}, Type: {log['type']}, "\
+                            f"Message: {log['message']}")
+                    conn.send(json.dumps(log).encode())
                     continue
-                if header == "message":
-                    log = f"{body}"
-                    print(f"[{addr[0]}]: {log}")
+                if header == "message" and (message_type == "plain-text" or
+                        message_type == "encrypted"):
+                    log = {"address": addr[0], "type": message_type, 
+                            "message": message}
+                    print(f"Address: {log['address']}, Type: {log['type']}, "\
+                            f"Message: {log['message']}")
                     for user in self.users:
                         if user != conn:
-                            user.send(f"[{addr[0]}]: {log}".encode())
+                            user.send(json.dumps(log).encode())
             conn.close()
         except ConnectionResetError:
             conn = None
