@@ -76,9 +76,11 @@ class Client:
                 encrypted = f.read()
                 f.close()
             try:
-                key = scrypt(passphrase, encrypted[:16], 32, N=2**20, r=8, p=1)
+                key = scrypt(passphrase, encrypted[:16], 32, N=2**20, r=8, 
+                        p=1)
                 cipher = AES.new(key, AES.MODE_EAX, encrypted[16:32])
-                return cipher.decrypt_and_verify(encrypted[48:], encrypted[32:48])
+                return cipher.decrypt_and_verify(encrypted[48:], 
+                        encrypted[32:48])
             except ValueError:
                 print("Wrong passphrase!")
                 exit(1)
@@ -159,13 +161,14 @@ if __name__ == "__main__":
                     "(Key derivation function: scrypt, Key size: 256 bits, "\
                     "Encrypt cipher: AES, Mode: EAX, Block size: 16 bytes")
     parser.add_argument("-g", "--generate", action="store_true",
-            help="Generate key, encrypt and save to output(default is key.bin)"\
-            " Use -o key to specify how to output key")
+            help="Generate key, encrypt and save to output(default "\
+                    "is key.bin) Use -o key to specify how to output key")
     parser.add_argument("-b", "--base64", action="store_true",
             help="Use base64 encoding for i/o")
     io.add_argument("-i", "--inp", action="store", metavar="inkey",
             help="Input key from file. Use with -b key to input as argument")
-    io.add_argument("-o", "--out", action="store", metavar="outkey", nargs="*",
+    io.add_argument("-o", "--out", action="store", metavar="outkey", 
+            nargs="*", 
             help="Output key to file. Use with -b key to output as ascii "\
                     "characters")
     args = parser.parse_args()
@@ -192,8 +195,9 @@ if __name__ == "__main__":
         cipher = AES.new(key, AES.MODE_EAX)
         ciphertext, tag = cipher.encrypt_and_digest(nestedkey)
         if args.base64:
-            print("Encrypted key: "\
-                    f"{b64encode(salt + cipher.nonce + tag + ciphertext).decode()}")
+            print("Encrypted key: " + 
+                    b64encode(salt + cipher.nonce + tag + 
+                        ciphertext).decode())
             exit(0)
         if not args.out:
             f = open("key.bin", "wb")
