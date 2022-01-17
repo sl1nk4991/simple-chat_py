@@ -8,6 +8,8 @@ import argparse
 import threading
 from os import system
 from binascii import Error
+from Crypto.Hash import SHA256
+from Crypto.Signature import pss
 from Crypto.PublicKey import RSA
 from Crypto.Protocol.KDF import scrypt
 from base64 import b64encode, b64decode
@@ -45,7 +47,7 @@ class Client:
         self.socket.connect((self.serv_addr, self.serv_port))
         reciveHandlerThread = threading.Thread(
                 target=self.reciveHandler,
-                args=(key,)
+                args=(key,pub)
                 )
         reciveHandlerThread.start()
         inputHandlerThread = threading.Thread(
@@ -115,7 +117,7 @@ class Client:
             print("No such public key!")
         return priv, pub
 
-    def reciveHandler(self, key=None):
+    def reciveHandler(self, key=None, pub=None):
         while True:
             system("clear")
             print(f"{self.msglog}\nEnter: ", end='')
@@ -142,9 +144,9 @@ class Client:
                         self.msglog += f"[{address}]: encrypted\n"
                 elif self.args.asymmetric:
                     try:
-                        decrypted = asymDecrypt(b64decode(msg.encode()),
-                                key).decode()
-                        self.msglog += f"[ENC][{address}]: {decrypted}\n"
+                        decrypted = asymDecrypt(b64decode(msg.encode()), key, 
+                                pub).decode()
+                        self.msglog += f"[ENC+SIGN][{address}]: {decrypted}\n"
                     except (IndexError, Error, ValueError, KeyError):
                         self.msglog += f"[{address}]: encrypted\n"
 
@@ -162,11 +164,11 @@ class Client:
                 msg = encrypted
                 prefix = "[ENC]"
             elif self.args.asymmetric:
-                encrypted = b64encode(asymEncrypt(userInput.encode(),
+                encrypted = b64encode(asymEncrypt(userInput.encode(), key, 
                     pub)).decode()
                 msg_type = "encrypted"
                 msg = encrypted
-                prefix = "[ENC]"
+                prefix = "[ENC+SIGN]"
             data = {"header": "message", "type": msg_type, "message": msg}
             self.socket.send(json.dumps(data).encode())
             system("clear")
@@ -181,13 +183,15 @@ def symEncrypt(data: bytes, key: bytes):
     encrypted = cipher.nonce + tag + ciphertext
     return encrypted
 
-def asymEncrypt(data: bytes, pub: RSA.RsaKey):
+def asymEncrypt(data: bytes, key: RSA.RsaKey, pub: RSA.RsaKey):
     session_key = get_random_bytes(32)
     cipher_rsa = PKCS1_OAEP.new(pub)
     enc_session_key = cipher_rsa.encrypt(session_key)
     cipher_aes = AES.new(session_key, AES.MODE_EAX)
     ciphertext, tag = cipher_aes.encrypt_and_digest(data)
-    encrypted = enc_session_key + cipher_aes.nonce + tag + ciphertext
+    h = SHA256.new(data)
+    sign = pss.new(key).sign(h)
+    encrypted = enc_session_key + sign + cipher_aes.nonce + tag + ciphertext
     return encrypted
 
 def symDecrypt(data: bytes, key: bytes):
@@ -195,12 +199,15 @@ def symDecrypt(data: bytes, key: bytes):
     decrypted = unpad(cipher.decrypt_and_verify(data[32:], data[16:32]), 16)
     return decrypted
 
-def asymDecrypt(data: bytes, key: RSA.RsaKey):
+def asymDecrypt(data: bytes, key: RSA.RsaKey, pub: RSA.RsaKey):
     ks = key.size_in_bytes()
     cipher_rsa = PKCS1_OAEP.new(key)
     session_key = cipher_rsa.decrypt(data[:ks])
-    cipher_aes = AES.new(session_key, AES.MODE_EAX, data[ks:ks+16])
-    decrypted = cipher_aes.decrypt_and_verify(data[ks+32:], data[ks+16:ks+32])
+    cipher_aes = AES.new(session_key, AES.MODE_EAX, data[ks*2:ks*2+16])
+    decrypted = cipher_aes.decrypt_and_verify(data[ks*2+32:], 
+            data[ks*2+16:ks*2+32])
+    h = SHA256.new(decrypted)
+    pss.new(key).verify(h, data[ks:ks*2])
     return decrypted
     
 if __name__ == "__main__":
