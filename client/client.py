@@ -44,7 +44,11 @@ class Client:
         self.context.load_verify_locations('ssl/cert.pem')
         self.socket = self.context.wrap_socket(self.socket, 
                 server_hostname='localhost')
-        self.socket.connect((self.serv_addr, self.serv_port))
+        try:
+            self.socket.connect((self.serv_addr, self.serv_port))
+        except ConnectionRefusedError:
+            print("Cannot connect to the server!")
+            exit(1)
         reciveHandlerThread = threading.Thread(
                 target=self.reciveHandler,
                 args=(key,pub)
@@ -207,7 +211,7 @@ def asymDecrypt(data: bytes, key: RSA.RsaKey, pub: RSA.RsaKey):
     decrypted = cipher_aes.decrypt_and_verify(data[ks*2+32:], 
             data[ks*2+16:ks*2+32])
     h = SHA256.new(decrypted)
-    pss.new(key).verify(h, data[ks:ks*2])
+    pss.new(pub).verify(h, data[ks:ks*2])
     return decrypted
     
 if __name__ == "__main__":
